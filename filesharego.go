@@ -22,7 +22,6 @@ import (
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"
 	icore "github.com/ipfs/kubo/core/coreiface"
-	"github.com/ipfs/kubo/core/coreiface/options"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
 	"github.com/ipfs/kubo/repo/fsrepo"
@@ -202,12 +201,35 @@ func ForeverSpin() {
 	}
 }
 
-func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
+func StartIpfsNode() (context.Context, icore.CoreAPI, context.CancelFunc, error) {
+	fmt.Println("-- Getting an IPFS node running -- ")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+
+	// Spawn a node using a temporary path, creating a temporary repo for the run
+	fmt.Println("Spawning Kubo node on a temporary repo")
+	ipfsB, _, err := SpawnEphemeral(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to spawn ephemeral node: %s", err))
+	}
+
+	fmt.Println("IPFS node is running")
+
+	return ctx, ipfsB, cancel, err
+}
+
+func DownloadFromCid(cidStr string) {
 	// in case of /ipfs/exampleCid we strip string and work only on exampleCid
 	cidStr = cidStr[strings.LastIndex(cidStr, "/")+1:]
 	cidFromString, err := cid.Parse(cidStr)
 	if err != nil {
 		panic(fmt.Errorf("could not get CID from flag cid: %s", err))
+	}
+
+	ctx, ipfsA, cancel, err := StartIpfsNode()
+	if err != nil {
+		panic(fmt.Errorf("failed to start IPFS node: %s", err))
 	}
 
 	fmt.Printf("Fetching a file from the network with CID %s\n", cidStr)
@@ -217,6 +239,8 @@ func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	if err != nil {
 		panic(fmt.Errorf("could not get file with CID: %s", err))
 	}
+
+	defer cancel() // shutdown IPFS node
 
 	// for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	// c, err := ipfsA.Unixfs().Ls(ctx, testCID)
@@ -244,14 +268,38 @@ func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	fmt.Printf("Wrote the files to %s\n", outputPath)
 }
 
-func UploadFiles(ctx context.Context, ipfsA icore.CoreAPI, someFile files.Node) {
+func UploadFiles(flagFilePath string) {
+	ctx, ipfsA, cancel, err := StartIpfsNode()
+	if err != nil {
+		panic(fmt.Errorf("failed to start IPFS node: %s", err))
+	}
 
-	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile, options.Unixfs.Pin(true))
+	someFile, err := GetUnixfsNode(flagFilePath)
+	if err != nil {
+		panic(fmt.Errorf("could not get File: %s", err))
+	}
+
+	//for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
+	fileInfo, err := os.Stat(flagFilePath)
+	if err != nil {
+		panic(fmt.Errorf("could not get File stat info: %s", err))
+	}
+
+	// wrap file into directory with filename so ipfs shows file name later
+	if !fileInfo.IsDir() {
+		someFile = files.NewSliceDirectory([]files.DirEntry{
+			files.FileEntry(filepath.Base(flagFilePath), someFile),
+		})
+	}
+
+	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile)
 	if err != nil {
 		panic(fmt.Errorf("could not add File: %s", err))
 	}
 
 	fmt.Printf("Added file to IPFS. Now share this CID with your friend:\n%s\n", cidFile.String())
+
+	defer cancel() // shutdown IPFS node
 
 	// for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	// c, err := ipfsA.Unixfs().Ls(ctx, cidFile)
