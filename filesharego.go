@@ -236,7 +236,7 @@ func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 		panic(fmt.Errorf("could not create Download directory: %s", err))
 	}
 
-	err = files.WriteTo(rootNode, outputPath)
+	err = files.WriteTo(rootNode, filepath.Clean(outputPath))
 	if err != nil {
 		panic(fmt.Errorf("could not write out the fetched CID: %s\noutputPath: %s", err, outputPath))
 	}
@@ -244,7 +244,7 @@ func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	fmt.Printf("Wrote the files to %s\n", outputPath)
 }
 
-func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, someFile files.Node) {
+func UploadFiles(ctx context.Context, ipfsA icore.CoreAPI, someFile files.Node) {
 
 	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile, options.Unixfs.Pin(true))
 	if err != nil {
