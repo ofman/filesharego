@@ -269,7 +269,7 @@ func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string
 		panic(fmt.Errorf("could not add File: %s", err))
 	}
 
-	fmt.Printf("Added file to IPFS. Now share this CID with your friend:\n%s\nor open new cmd window and download with command:\nfilesharego -c %s\n", cidFile.String(), cidFile.String())
+	fmt.Printf("Added file to IPFS. Now share this CID with your friend:\n%s\n", cidFile.String())
 
 	// for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	// c, err := ipfsA.Unixfs().Ls(ctx, cidFile)

@@ -1,2 +1,2 @@
 # filesharego
-File sharing P2P cli program made in GoLang with IPFS via KISS (Keep It Super Simple) principle.
+GO package files for file sharing P2P program found here: https://github.com/ofman/fsg
