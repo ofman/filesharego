@@ -16,6 +16,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	icore "github.com/ipfs/boxo/coreiface"
+	"github.com/ipfs/boxo/coreiface/options"
 	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -87,8 +88,6 @@ func CreateTempRepo() (string, error) {
 
 	return repoPath, nil
 }
-
-/// ------ Spawning the node
 
 // Creates an IPFS node and returns its coreAPI.
 func CreateNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
@@ -245,25 +244,9 @@ func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	fmt.Printf("Wrote the files to %s\n", outputPath)
 }
 
-func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string) {
-	someFile, err := GetUnixfsNode(filePathStr)
-	if err != nil {
-		panic(fmt.Errorf("could not get File: %s", err))
-	}
+func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, someFile files.Node) {
 
-	fileInfo, err := os.Stat(filePathStr)
-	if err != nil {
-		panic(fmt.Errorf("could not get File stat info: %s", err))
-	}
-
-	// wrap file into directory with filename so ipfs shows file name later
-	if !fileInfo.IsDir() {
-		someFile = files.NewSliceDirectory([]files.DirEntry{
-			files.FileEntry(filepath.Base(filePathStr), someFile),
-		})
-	}
-
-	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile)
+	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile, options.Unixfs.Pin(true))
 	if err != nil {
 		panic(fmt.Errorf("could not add File: %s", err))
 	}

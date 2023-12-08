@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/ipfs/boxo v0.16.0
+	github.com/ipfs/boxo v0.15.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-ipfs-files v0.3.0
 	github.com/ipfs/kubo v0.24.0
