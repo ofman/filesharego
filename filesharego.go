@@ -16,7 +16,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	icore "github.com/ipfs/boxo/coreiface"
-	"github.com/ipfs/boxo/coreiface/options"
 	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -264,7 +263,7 @@ func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string
 		})
 	}
 
-	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile, options.Unixfs.Pin(true))
+	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile)
 	if err != nil {
 		panic(fmt.Errorf("could not add File: %s", err))
 	}
