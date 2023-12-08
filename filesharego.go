@@ -33,7 +33,7 @@ import (
 
 var flagExp = flag.Bool("experimental", false, "enable experimental features")
 
-func setupPlugins(externalPluginsPath string) error {
+func SetupPlugins(externalPluginsPath string) error {
 	// Load any external plugins if available on externalPluginsPath
 	plugins, err := loader.NewPluginLoader(filepath.Join(externalPluginsPath, "plugins"))
 	if err != nil {
@@ -52,7 +52,7 @@ func setupPlugins(externalPluginsPath string) error {
 	return nil
 }
 
-func createTempRepo() (string, error) {
+func CreateTempRepo() (string, error) {
 	repoPath, err := os.MkdirTemp("", "ipfs-shell")
 	if err != nil {
 		return "", fmt.Errorf("failed to get temp dir: %s", err)
@@ -92,7 +92,7 @@ func createTempRepo() (string, error) {
 /// ------ Spawning the node
 
 // Creates an IPFS node and returns its coreAPI.
-func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
+func CreateNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 	// Open the repo
 	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
@@ -114,22 +114,22 @@ func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 var loadPluginsOnce sync.Once
 
 // Spawns a node to be used just for this run (i.e. creates a tmp repo).
-func spawnEphemeral(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
+func SpawnEphemeral(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 	var onceErr error
 	loadPluginsOnce.Do(func() {
-		onceErr = setupPlugins("")
+		onceErr = SetupPlugins("")
 	})
 	if onceErr != nil {
 		return nil, nil, onceErr
 	}
 
 	// Create a Temporary Repo
-	repoPath, err := createTempRepo()
+	repoPath, err := CreateTempRepo()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create temp repo: %s", err)
 	}
 
-	node, err := createNode(ctx, repoPath)
+	node, err := CreateNode(ctx, repoPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,7 +140,7 @@ func spawnEphemeral(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) 
 }
 
 // for the future file sharing
-func connectToPeers(ctx context.Context, ipfs icore.CoreAPI, peers []string) error {
+func ConnectToPeers(ctx context.Context, ipfs icore.CoreAPI, peers []string) error {
 	var wg sync.WaitGroup
 	peerInfos := make(map[peer.ID]*peer.AddrInfo, len(peers))
 	for _, addrStr := range peers {
@@ -174,7 +174,7 @@ func connectToPeers(ctx context.Context, ipfs icore.CoreAPI, peers []string) err
 	return nil
 }
 
-func getUnixfsNode(path string) (files.Node, error) {
+func GetUnixfsNode(path string) (files.Node, error) {
 	st, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ func getUnixfsNode(path string) (files.Node, error) {
 	return f, nil
 }
 
-func foreverSpin() {
+func ForeverSpin() {
 	bar := progressbar.Default(-1)
 	// bar := progressbar.DefaultBytes(
 	// 	-1,
@@ -204,7 +204,7 @@ func foreverSpin() {
 	}
 }
 
-func downloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
+func DownloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	// in case of /ipfs/exampleCid we strip string and work only on exampleCid
 	cidStr = cidStr[strings.LastIndex(cidStr, "/")+1:]
 	cidFromString, err := cid.Parse(cidStr)
@@ -246,8 +246,8 @@ func downloadFromCid(ctx context.Context, ipfsA icore.CoreAPI, cidStr string) {
 	fmt.Printf("Wrote the files to %s\n", outputPath)
 }
 
-func uploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string) {
-	someFile, err := getUnixfsNode(filePathStr)
+func UploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string) {
+	someFile, err := GetUnixfsNode(filePathStr)
 	if err != nil {
 		panic(fmt.Errorf("could not get File: %s", err))
 	}
@@ -289,7 +289,7 @@ func uploadFromPath(ctx context.Context, ipfsA icore.CoreAPI, filePathStr string
 
 	fmt.Printf("Seeding size: %s\n", humanize.Bytes(uint64(fileSize)))
 
-	go foreverSpin()
+	go ForeverSpin()
 
 	quitChannel := make(chan os.Signal, 1)
 	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
