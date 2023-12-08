@@ -6,6 +6,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/ipfs/boxo v0.15.0
 	github.com/ipfs/go-cid v0.4.1
+	github.com/ipfs/go-ipfs-files v0.3.0
 	github.com/ipfs/kubo v0.24.0
 	github.com/libp2p/go-libp2p v0.32.1
 	github.com/multiformats/go-multiaddr v0.12.0
@@ -75,7 +76,6 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.3.0 // indirect
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
-	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-redirects-file v0.1.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
@@ -83,6 +83,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.6.0 // indirect
 	github.com/ipfs/go-ipld-git v0.1.1 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.1 // indirect
+	github.com/ipfs/go-libipfs v0.7.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
