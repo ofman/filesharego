@@ -270,7 +270,7 @@ func DownloadFromCid(cidStr string) (outputPath string, err error) {
 	return outputPath, err
 }
 
-func UploadFiles(flagFilePath string, forSpin bool) (cidStr string, err error) {
+func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 	ctx, ipfsA, cancel, err := StartIpfsNode()
 	if err != nil {
 		panic(fmt.Errorf("failed to start IPFS node: %s", err))
@@ -321,15 +321,15 @@ func UploadFiles(flagFilePath string, forSpin bool) (cidStr string, err error) {
 
 	fmt.Printf("Seeding size: %s\n", humanize.Bytes(uint64(fileSize)))
 
-	if forSpin {
+	if isCli {
 		go ForeverSpin()
+
+		quitChannel := make(chan os.Signal, 1)
+		signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
+		<-quitChannel
+
+		fmt.Println("\nAdios!")
 	}
-
-	quitChannel := make(chan os.Signal, 1)
-	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
-	<-quitChannel
-
-	fmt.Println("\nAdios!")
 
 	return cidFile.String(), err
 }
