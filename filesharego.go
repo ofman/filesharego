@@ -2,6 +2,7 @@ package filesharego
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -219,28 +220,57 @@ func StartIpfsNode() (context.Context, icore.CoreAPI, context.CancelFunc, error)
 	return ctx, ipfsB, cancel, err
 }
 
-func DownloadFromCid(cidStr string) (outputPath string, err error) {
-	// in case of /ipfs/exampleCid we strip string and work only on exampleCid
-	cidStr = cidStr[strings.LastIndex(cidStr, "/")+1:]
-	cidFromString, err := cid.Parse(cidStr)
+func ErrorCheck(err error, isCli bool) error {
 	if err != nil {
-		panic(fmt.Errorf("could not get CID from flag cid: %s", err))
+		if isCli {
+			panic(fmt.Errorf("Error: %s", err))
+		} else {
+			fmt.Printf("Error: %s", err)
+		}
 	}
+	return err
+}
+
+func GetCidStrFromString(str string) (cidStr string) {
+	// in case of /ipfs/exampleCid we strip string and work only on exampleCid, in the future need to check if this is CID string
+	cidStr = str[strings.LastIndex(str, "/")+1:]
+	return cidStr
+}
+
+func DownloadFromCid(cidStr string, isCli bool) (outputPath string, err error) {
 
 	ctx, ipfsA, cancel, err := StartIpfsNode()
-	if err != nil {
-		panic(fmt.Errorf("failed to start IPFS node: %s", err))
+	// ctx, ipfsA, cancel, err := StartIpfsNode()
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
+	defer cancel() // We also call defer cancel() to ensure that the context is cancelled when the function returns.
 
+	cidStr = GetCidStrFromString(cidStr)
+	cidFromString, err := cid.Parse(cidStr)
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
+	}
 	fmt.Printf("Fetching a file from the network with CID %s\n", cidStr)
 	testCID := path.FromCid(cidFromString)
 
 	rootNode, err := ipfsA.Unixfs().Get(ctx, testCID)
-	if err != nil {
-		panic(fmt.Errorf("could not get file with CID: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
-	defer cancel() // shutdown IPFS node
+	select {
+	case <-time.After(5 * time.Second):
+		fmt.Println("Found a peer and downloaded the content\n")
+	case <-ctx.Done():
+		fmt.Println("Process timed out")
+		err := errors.New("Error: Timeout. No seeders?")
+		if ErrorCheck(err, isCli) != nil {
+			return "", err
+		}
+	}
+
+	ctx.Done()
 
 	// for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	// c, err := ipfsA.Unixfs().Ls(ctx, testCID)
@@ -256,35 +286,36 @@ func DownloadFromCid(cidStr string) (outputPath string, err error) {
 	outputPath = "./Download/" + cidStr
 
 	err = os.MkdirAll("Download", 0o777)
-	if err != nil {
-		panic(fmt.Errorf("could not create Download directory: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
 	err = files.WriteTo(rootNode, filepath.Clean(outputPath))
-	if err != nil {
-		panic(fmt.Errorf("could not write out the fetched CID: %s\noutputPath: %s", err, outputPath))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
+	} else {
+		fmt.Printf("Wrote the files to %s\n", outputPath)
 	}
-
-	fmt.Printf("Wrote the files to %s\n", outputPath)
 
 	return outputPath, err
 }
 
 func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 	ctx, ipfsA, cancel, err := StartIpfsNode()
-	if err != nil {
-		panic(fmt.Errorf("failed to start IPFS node: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
+	defer cancel() // We also call defer cancel() to ensure that the context is cancelled when the function returns.
 
 	someFile, err := GetUnixfsNode(flagFilePath)
-	if err != nil {
-		panic(fmt.Errorf("could not get File: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
 	//for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	fileInfo, err := os.Stat(flagFilePath)
-	if err != nil {
-		panic(fmt.Errorf("could not get File stat info: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
 	// wrap file into directory with filename so ipfs shows file name later
@@ -295,13 +326,11 @@ func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 	}
 
 	cidFile, err := ipfsA.Unixfs().Add(ctx, someFile)
-	if err != nil {
-		panic(fmt.Errorf("could not add File: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
 	fmt.Printf("Added file to IPFS. Now share this CID with your friend:\n%s\n", cidFile.String())
-
-	defer cancel() // shutdown IPFS node
 
 	// for the future simplicity to download single files in the same directory. Opened ticked on ipfs here: https://github.com/ipfs/boxo/issues/520
 	// c, err := ipfsA.Unixfs().Ls(ctx, cidFile)
@@ -315,8 +344,8 @@ func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 	// }
 
 	fileSize, err := someFile.Size()
-	if err != nil {
-		panic(fmt.Errorf("could not get File: %s", err))
+	if ErrorCheck(err, isCli) != nil {
+		return "", err
 	}
 
 	fmt.Printf("Seeding size: %s\n", humanize.Bytes(uint64(fileSize)))
@@ -329,6 +358,7 @@ func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 		<-quitChannel
 
 		fmt.Println("\nAdios!")
+		ctx.Done()
 	}
 
 	return cidFile.String(), err
