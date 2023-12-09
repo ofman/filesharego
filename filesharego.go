@@ -219,7 +219,7 @@ func StartIpfsNode() (context.Context, icore.CoreAPI, context.CancelFunc, error)
 	return ctx, ipfsB, cancel, err
 }
 
-func DownloadFromCid(cidStr string) {
+func DownloadFromCid(cidStr string) (outputPath string, err error) {
 	// in case of /ipfs/exampleCid we strip string and work only on exampleCid
 	cidStr = cidStr[strings.LastIndex(cidStr, "/")+1:]
 	cidFromString, err := cid.Parse(cidStr)
@@ -253,7 +253,7 @@ func DownloadFromCid(cidStr string) {
 	// 	fmt.Printf("%d file name: %v\n", fileCounter, de.Name)
 	// }
 
-	outputPath := "./Download/" + cidStr
+	outputPath = "./Download/" + cidStr
 
 	err = os.MkdirAll("Download", 0o777)
 	if err != nil {
@@ -266,9 +266,11 @@ func DownloadFromCid(cidStr string) {
 	}
 
 	fmt.Printf("Wrote the files to %s\n", outputPath)
+
+	return outputPath, err
 }
 
-func UploadFiles(flagFilePath string) {
+func UploadFiles(flagFilePath string, forSpin bool) (cidStr string, err error) {
 	ctx, ipfsA, cancel, err := StartIpfsNode()
 	if err != nil {
 		panic(fmt.Errorf("failed to start IPFS node: %s", err))
@@ -319,11 +321,15 @@ func UploadFiles(flagFilePath string) {
 
 	fmt.Printf("Seeding size: %s\n", humanize.Bytes(uint64(fileSize)))
 
-	go ForeverSpin()
+	if forSpin {
+		go ForeverSpin()
+	}
 
 	quitChannel := make(chan os.Signal, 1)
 	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
 	<-quitChannel
 
 	fmt.Println("\nAdios!")
+
+	return cidFile.String(), err
 }
