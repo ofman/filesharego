@@ -2,7 +2,6 @@ package filesharego
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -223,9 +222,9 @@ func StartIpfsNode() (context.Context, icore.CoreAPI, context.CancelFunc, error)
 func ErrorCheck(err error, isCli bool) error {
 	if err != nil {
 		if isCli {
-			panic(fmt.Errorf("Error: %s", err))
+			panic(fmt.Errorf("error: %s", err))
 		} else {
-			fmt.Printf("Error: %s", err)
+			fmt.Printf("error: %s", err)
 		}
 	}
 	return err
@@ -234,6 +233,8 @@ func ErrorCheck(err error, isCli bool) error {
 func GetCidStrFromString(str string) (cidStr string) {
 	// in case of /ipfs/exampleCid we strip string and work only on exampleCid, in the future need to check if this is CID string
 	cidStr = str[strings.LastIndex(str, "/")+1:]
+	// we also trim leading and trailing spaces or new lines
+	cidStr = strings.Trim(cidStr, " \r\n")
 	return cidStr
 }
 
@@ -257,17 +258,6 @@ func DownloadFromCid(cidStr string, isCli bool) (outputPath string, err error) {
 	rootNode, err := ipfsA.Unixfs().Get(ctx, testCID)
 	if ErrorCheck(err, isCli) != nil {
 		return "", err
-	}
-
-	select {
-	case <-time.After(5 * time.Second):
-		fmt.Println("Found a peer and downloaded the content\n")
-	case <-ctx.Done():
-		fmt.Println("Process timed out")
-		err := errors.New("Error: Timeout. No seeders?")
-		if ErrorCheck(err, isCli) != nil {
-			return "", err
-		}
 	}
 
 	ctx.Done()
