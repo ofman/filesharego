@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	files "github.com/ipfs/boxo/files"
@@ -27,7 +26,6 @@ import (
 	"github.com/ipfs/kubo/repo/fsrepo"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/schollz/progressbar/v3"
 )
 
 var flagExp = flag.Bool("experimental", false, "enable experimental features")
@@ -186,19 +184,19 @@ func GetUnixfsNode(path string) (files.Node, error) {
 }
 
 func ForeverSpin() {
-	bar := progressbar.Default(-1)
-	// bar := progressbar.DefaultBytes(
-	// 	-1,
-	// 	"uploading",
-	// )
-	for {
-		// for i := 0; i < 100; i++ {
-		// 	bar.Add(1)
-		// 	time.Sleep(40 * time.Millisecond)
-		// }
-		bar.Add(1)
-		time.Sleep(100 * time.Millisecond)
-	}
+	// bar := progressbar.Default(-1)
+	// // bar := progressbar.DefaultBytes(
+	// // 	-1,
+	// // 	"uploading",
+	// // )
+	// for {
+	// 	// for i := 0; i < 100; i++ {
+	// 	// 	bar.Add(1)
+	// 	// 	time.Sleep(40 * time.Millisecond)
+	// 	// }
+	// 	bar.Add(1)
+	// 	time.Sleep(100 * time.Millisecond)
+	// }
 }
 
 func StartIpfsNode() (context.Context, icore.CoreAPI, context.CancelFunc, error) {
@@ -238,26 +236,26 @@ func GetCidStrFromString(str string) (cidStr string) {
 	return cidStr
 }
 
-func DownloadFromCid(cidStr string, isCli bool) (outputPath string, err error) {
+func DownloadFromCid(cidStr string, isCli bool) (outputPath string, err error, progress int64) {
 
 	ctx, ipfsA, cancel, err := StartIpfsNode()
 	// ctx, ipfsA, cancel, err := StartIpfsNode()
 	if ErrorCheck(err, isCli) != nil {
-		return "", err
+		return "", err, 0
 	}
 	defer cancel() // We also call defer cancel() to ensure that the context is cancelled when the function returns.
 
 	cidStr = GetCidStrFromString(cidStr)
 	cidFromString, err := cid.Parse(cidStr)
 	if ErrorCheck(err, isCli) != nil {
-		return "", err
+		return "", err, 0
 	}
 	fmt.Printf("Fetching a file from the network with CID %s\n", cidStr)
 	testCID := path.FromCid(cidFromString)
 
 	rootNode, err := ipfsA.Unixfs().Get(ctx, testCID)
 	if ErrorCheck(err, isCli) != nil {
-		return "", err
+		return "", err, 0
 	}
 
 	ctx.Done()
@@ -277,17 +275,27 @@ func DownloadFromCid(cidStr string, isCli bool) (outputPath string, err error) {
 
 	err = os.MkdirAll("Download", 0o777)
 	if ErrorCheck(err, isCli) != nil {
-		return "", err
+		return "", err, 0
 	}
+
+	// in the future there should be progress bar here
+	// reader, pipew := io.Pipe()
+	// size, err := rootNode.Size()
+	// reader, err := fileArchive(rootNode, p.String(), archive, cmplvl)
+	// if ErrorCheck(err, isCli) != nil {
+	// 	return "", err, 0
+	// }
 
 	err = files.WriteTo(rootNode, filepath.Clean(outputPath))
 	if ErrorCheck(err, isCli) != nil {
-		return "", err
+		return "", err, 0
 	} else {
 		fmt.Printf("Wrote the files to %s\n", outputPath)
 	}
 
-	return outputPath, err
+	// reader.Close()
+
+	return outputPath, err, 100
 }
 
 func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
@@ -295,7 +303,6 @@ func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 	if ErrorCheck(err, isCli) != nil {
 		return "", err
 	}
-	defer cancel() // We also call defer cancel() to ensure that the context is cancelled when the function returns.
 
 	someFile, err := GetUnixfsNode(flagFilePath)
 	if ErrorCheck(err, isCli) != nil {
@@ -349,6 +356,7 @@ func UploadFiles(flagFilePath string, isCli bool) (cidStr string, err error) {
 
 		fmt.Println("\nAdios!")
 		ctx.Done()
+		defer cancel()
 	}
 
 	return cidFile.String(), err
